@@ -69,7 +69,7 @@ def clamp(i, mn=0, mx=1):
 class MainWindow(ShowBase):
 
     def doExit(self):
-        os.system('xset r on')
+        # os.system('xset r on')
         sys.exit(1)
 
     def rel_path(self, path="/src"):
@@ -122,6 +122,10 @@ class MainWindow(ShowBase):
     def accelerate(self):
         self.vehicle.applyEngineForce(5000, 1)
         self.vehicle.applyEngineForce(5000, 0)
+
+    def reverse(self):
+        self.vehicle.applyEngineForce(-1000, 1)
+        self.vehicle.applyEngineForce(-1000, 0)
 
     def noaccelerate(self):
         self.vehicle.applyEngineForce(0, 1)
@@ -181,6 +185,9 @@ class MainWindow(ShowBase):
         if is_down(self.forward_button):
             self.accelerate()
 
+        # if is_down(self.reverse_button): # seems to disallow forward engine force when reverse engine force is used
+        #     self.reverse()
+
         else:
             self.noaccelerate()
 
@@ -220,13 +227,12 @@ class MainWindow(ShowBase):
 
         # Steering info
         self.steering = 0.0  # degrees
-        self.steeringClamp = 45.0  # degrees
-        self.steeringIncrement = 180.0  # degrees per second
+        self.steeringClamp = 40.0  # degrees
+        self.steeringIncrement = 100.0  # degrees per second
         self.nosteerinput = False
 
-        base.cam.setPos(0, -10, 4)
-        base.cam.lookAt(0, 0, 0)
-        base.cam.reparentTo(render)
+        base.cam.setPos(0, -8, 2.1)
+        base.cam.lookAt(0, 0, 0.3)
 
         # Directional light 02
         directionalLight = DirectionalLight('directionalLight')
@@ -256,10 +262,12 @@ class MainWindow(ShowBase):
         self.chassisNP.node().setMass(1520.0)
         self.chassisNP.node().setDeactivationEnabled(False)
 
+        base.cam.reparentTo(self.chassisNP)
+
         self.world.attachRigidBody(self.chassisNP.node())
 
         # Chassis geometry
-        loader.loadModel(self.rel_path("/src/models/cars/Supra Body ReScale rotate.bam")).reparentTo(self.chassisNP)
+        loader.loadModel(self.rel_path("/src/models/cars/Supra Body ReScale rotate Nglass.bam")).reparentTo(self.chassisNP)
 
         # Vehicle
         self.vehicle = BulletVehicle(self.world, self.chassisNP.node())
@@ -320,6 +328,7 @@ class MainWindow(ShowBase):
         self.left_button = KeyboardButton.ascii_key('a')
         self.backward_button = KeyboardButton.ascii_key('s')
         self.right_button = KeyboardButton.ascii_key('d')
+        self.reverse_button = KeyboardButton.ascii_key('r')
 
         map = base.win.get_keyboard_map()
 
