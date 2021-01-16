@@ -26,3 +26,38 @@
 #
 # # self.car.setAttrib(self.lowPassFilter)
 # self.car.reparentTo(render)
+
+# self.accept("w", self.accelerate)
+# self.accept("w-repeat", self.accelerate)
+# self.accept("w-up", self.noaccelerate)
+#
+# self.accept("s", self.brake)
+# self.accept("s-repeat", self.brake)
+# self.accept("s-up", self.nobrake)
+#
+# self.accept("a", self.turnleft)
+# self.accept("a-repeat", self.turnleft)
+# self.accept("a-up", self.nosteermethod)
+#
+# self.accept("d", self.turnright)
+# self.accept("d-repeat", self.turnright)
+# self.accept("d-up", self.nosteermethod)
+#
+# self.accept(".", self.doExit)
+
+
+# debugNode = BulletDebugNode('Debug')
+# debugNode.showWireframe(True)
+# debugNode.showConstraints(True)
+# debugNode.showBoundingBoxes(False)
+# debugNode.showNormals(False)
+# debugNP = render.attachNewNode(debugNode)
+# debugNP.show()
+#
+# world = BulletWorld()
+# world.setGravity(Vec3(0, 0, -9.81))
+# self.world.setDebugNode(debugNP.node())
+
+
+# Chassis body
+# shape = BulletBoxShape(Vec3(0.7, 1.5, 0.5))

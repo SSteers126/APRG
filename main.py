@@ -2,6 +2,9 @@
 # import direct.directbase.DirectStart
 # from direct.showbase.DirectObject import DirectObject
 
+# Allows for an easy access set of data available to all scripts
+import globals
+import math
 # Libraries for backend path conversion
 import sys, os
 
@@ -49,8 +52,6 @@ print(Thread.isThreadingSupported())
 
 
 # Simple function to keep a value in a given range (by default 0 to 1)
-def clamp(i, mn=0, mx=1):
-    return min(max(i, mn), mx)
 
 # from panda3d.core import loadPrcFileData
 #
@@ -65,6 +66,178 @@ def clamp(i, mn=0, mx=1):
 
 # os.system('xset r off')
 
+class BulletCar:
+    def __init__(self, world, keymonitor,
+                 forward_button, left_button, right_button, brake_button, reverse_button,
+                 max_steering=40.0, steer_speed=100.0, body_node_name="Car",
+                 hitbox_dimensions=(1, 2.2, 0.55), hitbox_location=(0, 0, 0.75),
+                 spawn_location=(0, 0, 0), mass=1520.0,
+                 rel_body_path="/src/models/cars/Supra Body ReScale rotate Nglass.bam",
+                 rel_lwheel_path="/src/models/cars/Supra Wheel L RS.bam",
+                 rel_rwheel_path="/src/models/cars/Supra Wheel R RS.bam",
+                 front_wheel_distance=(0.9, 1.35, 0.65),
+                 rear_wheel_distance=(0.9, 1.25, 0.65)):
+
+        globals.carObjects.append(self)
+        self.keymonitor = keymonitor
+
+        self.forward_button = forward_button
+        self.left_button = left_button
+        self.right_button = right_button
+        self.brake_button = brake_button
+        self.reverse_button = reverse_button
+
+        # Steering info
+        self.steering = 0.0  # degrees
+        self.steeringClamp = max_steering  # degrees
+        self.steeringIncrement = steer_speed  # degrees per second
+        self.nosteerinput = False
+
+        self.hitbox_shape = BulletBoxShape(Vec3(hitbox_dimensions[0], hitbox_dimensions[1], hitbox_dimensions[2]))
+        self.ts = TransformState.makePos(Point3(hitbox_location[0], hitbox_location[1], hitbox_location[2]))
+
+        self.chassisNP = render.attachNewNode(BulletRigidBodyNode(body_node_name))
+        self.chassisNP.node().addShape(self.hitbox_shape, self.ts)
+        self.chassisNP.setPos(spawn_location[0], spawn_location[1], spawn_location[2])
+        self.chassisNP.node().setMass(mass)
+        self.chassisNP.node().setDeactivationEnabled(False)
+        world.attachRigidBody(self.chassisNP.node())
+
+        # Chassis geometry
+        loader.loadModel(globals.rel_path(None, path=rel_body_path)).reparentTo(
+            self.chassisNP)
+
+        # Vehicle
+        self.vehicle = BulletVehicle(world, self.chassisNP.node())
+        self.vehicle.setCoordinateSystem(ZUp)
+        world.attachVehicle(self.vehicle)
+
+        self.LFwheelNP = loader.loadModel(globals.rel_path(None, rel_lwheel_path))
+        self.LFwheelNP.reparentTo(render)
+
+        self.RFwheelNP = loader.loadModel(globals.rel_path(None, rel_rwheel_path))
+        self.RFwheelNP.reparentTo(render)
+
+        self.LBwheelNP = loader.loadModel(globals.rel_path(None, rel_lwheel_path))
+        self.LBwheelNP.reparentTo(render)
+
+        self.RBwheelNP = loader.loadModel(globals.rel_path(None, rel_rwheel_path))
+        self.RBwheelNP.reparentTo(render)
+
+        self.LFwheel = self.addWheel(Point3(front_wheel_distance[0], front_wheel_distance[1], front_wheel_distance[2]), True, self.LFwheelNP)
+        self.RFwheel = self.addWheel(Point3(-(front_wheel_distance[0]), front_wheel_distance[1], front_wheel_distance[2]), True, self.RFwheelNP)
+        self.LBwheel = self.addWheel(Point3(rear_wheel_distance[0], -(rear_wheel_distance[1]), rear_wheel_distance[2]), False, self.LBwheelNP)
+        self.RBwheel = self.addWheel(Point3(-(rear_wheel_distance[0]), -(rear_wheel_distance[2]), rear_wheel_distance[2]), False, self.RBwheelNP)
+
+
+    def addWheel(self, pos, isfrontwheel, np):
+        wheel = self.vehicle.createWheel()
+
+        wheel.setNode(np.node())
+        wheel.setChassisConnectionPointCs(pos)
+        wheel.setFrontWheel(isfrontwheel)
+
+        wheel.setWheelDirectionCs(Vec3(0, 0, -1))
+        wheel.setWheelAxleCs(Vec3(1, 0, 0))
+        wheel.setWheelRadius(0.25)
+        wheel.setMaxSuspensionTravelCm(10.0)
+
+        wheel.setSuspensionStiffness(40.0)
+        wheel.setWheelsDampingRelaxation(2.3)
+        wheel.setWheelsDampingCompression(4.4)
+        wheel.setFrictionSlip(8.0)
+        wheel.setRollInfluence(0.1)
+
+    def accelerate(self):
+        self.vehicle.applyEngineForce(5000, 2)
+        self.vehicle.applyEngineForce(5000, 3)
+
+    def reverse(self):
+        self.vehicle.applyEngineForce(-1000, 2)
+        self.vehicle.applyEngineForce(-1000, 3)
+
+    def noaccelerate(self):
+        self.vehicle.applyEngineForce(0, 2)
+        self.vehicle.applyEngineForce(0, 3)
+        # self.vehicle.(0, 0)
+
+    def brake(self):
+        self.vehicle.setBrake(100, 0)
+        self.vehicle.setBrake(100, 1)
+        self.vehicle.setBrake(100, 2)
+        self.vehicle.setBrake(100, 3)
+
+    def nobrake(self):
+        self.vehicle.setBrake(0, 0)
+        self.vehicle.setBrake(0, 1)
+        self.vehicle.setBrake(0, 2)
+        self.vehicle.setBrake(0, 3)
+
+    def turnleft(self):
+        self.nosteerinput = False
+        self.steering += globalClock.getDt() * self.steeringIncrement
+        self.steering = min(self.steering, self.steeringClamp)
+        self.vehicle.setSteeringValue(self.steering, 0)
+        self.vehicle.setSteeringValue(self.steering, 1)
+
+    def nosteermethod(self, *args, **kwargs):
+        self.nosteerinput = True
+
+    def noturn(self):
+        if self.steering < 0:
+            self.steering += globalClock.getDt() * self.steeringIncrement
+            self.steering = min(self.steering, self.steeringClamp)
+
+        elif self.steering > 0:
+            self.steering -= globalClock.getDt() * self.steeringIncrement
+            self.steering = max(self.steering, -self.steeringClamp)
+
+        if (self.steering >= -0.1 and self.steering < 0) or (self.steering <= 0.1 and self.steering > 0):
+            self.steering = 0
+
+        self.vehicle.setSteeringValue(self.steering, 0)
+        self.vehicle.setSteeringValue(self.steering, 1)
+
+    def turnright(self):
+        self.nosteerinput = False
+        self.steering -= globalClock.getDt() * self.steeringIncrement
+        self.steering = max(self.steering, -self.steeringClamp)
+        self.vehicle.setSteeringValue(self.steering, 0)
+        self.vehicle.setSteeringValue(self.steering, 1)
+
+    def move_task(self, *args, **kwargs):
+        # speed = 0.0
+
+        if self.keymonitor(self.forward_button):
+            self.accelerate()
+
+        # if is_down(self.reverse_button): # seems to disallow forward engine force when reverse engine force is used
+        #     self.reverse()
+
+        else:
+            self.noaccelerate()
+
+        if self.keymonitor(self.brake_button):
+            self.brake()
+
+        else:
+            self.nobrake()
+
+        if self.keymonitor(self.left_button):
+            self.turnleft()
+
+        if self.keymonitor(self.right_button):
+            self.turnright()
+
+        if not(self.keymonitor(self.left_button)) and not(self.keymonitor(self.right_button)):
+            self.nosteerinput = True
+
+        if self.nosteerinput:
+            self.noturn()
+
+    def reverse_task(self, *args, **kwargs):
+        if self.keymonitor(self.reverse_button): # seems to disallow forward engine force when reverse engine force is used
+            self.reverse()
 
 class MainWindow(ShowBase):
 
@@ -92,128 +265,50 @@ class MainWindow(ShowBase):
     def convZUp(self, x, y, z):
         return (x, -z, y)
 
-    def addWheel(self, pos, isfrontwheel, np):
-        wheel = self.vehicle.createWheel()
+    # def camera_task(self, *args, **kwargs):
+    #     current_steer = globals.carObjects[0].steering
+    #     xcoord = None
+    #     base.cam.setPos(5, -8, 2.1)
+    #     base.cam.lookAt(0, 0, 0.3)
 
-        wheel.setNode(np.node())
-        wheel.setChassisConnectionPointCs(pos)
-        wheel.setFrontWheel(isfrontwheel)
 
-        wheel.setWheelDirectionCs(Vec3(0, 0, -1))
-        wheel.setWheelAxleCs(Vec3(1, 0, 0))
-        wheel.setWheelRadius(0.25)
-        wheel.setMaxSuspensionTravelCm(10.0)
 
-        wheel.setSuspensionStiffness(40.0)
-        wheel.setWheelsDampingRelaxation(2.3)
-        wheel.setWheelsDampingCompression(4.4)
-        wheel.setFrictionSlip(10.0)
-        wheel.setRollInfluence(0.1)
+    def hud_task(self, *args, **kwargs):
+        kph_measure = globals.carObjects[0].vehicle.getCurrentSpeedKmHour()
+        self.speedometer_kph.setText("Speed (kph): " + str(round(kph_measure, 1)))
+        self.speedometer_mph.setText("Speed (mph): " + str(round(mph_measure := (kph_measure * 0.6213712), 1)))
 
+    # def updateStatusLabel(self, *args, **kwargs):
 
     def update(self, task):
         dt = globalClock.getDt()
         self.world.doPhysics(dt, 10, 0.008)
         # if self.nosteerinput:
         #     self.noturn()
-        self.move_task()
+        for i in globals.carObjects:
+            i.move_task()
+            i.reverse_task()
+        # self.camera_task()
+        self.hud_task()
         return task.cont
-
-    def accelerate(self):
-        self.vehicle.applyEngineForce(5000, 1)
-        self.vehicle.applyEngineForce(5000, 0)
-
-    def reverse(self):
-        self.vehicle.applyEngineForce(-1000, 1)
-        self.vehicle.applyEngineForce(-1000, 0)
-
-    def noaccelerate(self):
-        self.vehicle.applyEngineForce(0, 1)
-        self.vehicle.applyEngineForce(0, 0)
-
-    def brake(self):
-        self.vehicle.setBrake(100, 0)
-        self.vehicle.setBrake(100, 1)
-        self.vehicle.setBrake(100, 2)
-        self.vehicle.setBrake(100, 3)
-
-    def nobrake(self):
-        self.vehicle.setBrake(0, 0)
-        self.vehicle.setBrake(0, 1)
-        self.vehicle.setBrake(0, 2)
-        self.vehicle.setBrake(0, 3)
-
-    def turnleft(self):
-        self.nosteerinput = False
-        self.steering += globalClock.getDt() * self.steeringIncrement
-        self.steering = min(self.steering, self.steeringClamp)
-        self.vehicle.setSteeringValue(self.steering, 2)
-        self.vehicle.setSteeringValue(self.steering, 3)
-
-    def nosteermethod(self, *args, **kwargs):
-        self.nosteerinput = True
-
-    def noturn(self):
-        if self.steering < 0:
-            self.steering += globalClock.getDt() * self.steeringIncrement
-            self.steering = min(self.steering, self.steeringClamp)
-
-        elif self.steering > 0:
-            self.steering -= globalClock.getDt() * self.steeringIncrement
-            self.steering = max(self.steering, -self.steeringClamp)
-
-        if (self.steering >= -0.01 and self.steering < 0) or (self.steering <= 0.01 and self.steering > 0):
-            self.steering = 0
-
-        self.vehicle.setSteeringValue(self.steering, 2)
-        self.vehicle.setSteeringValue(self.steering, 3)
-
-
-    def turnright(self):
-        self.nosteerinput = False
-        self.steering -= globalClock.getDt() * self.steeringIncrement
-        self.steering = max(self.steering, -self.steeringClamp)
-        self.vehicle.setSteeringValue(self.steering, 2)
-        self.vehicle.setSteeringValue(self.steering, 3)
-
-    def move_task(self, *args, **kwargs):
-        # speed = 0.0
-
-        # Check if the player is holding W or S
-        is_down = base.mouseWatcherNode.is_button_down
-
-        if is_down(self.forward_button):
-            self.accelerate()
-
-        # if is_down(self.reverse_button): # seems to disallow forward engine force when reverse engine force is used
-        #     self.reverse()
-
-        else:
-            self.noaccelerate()
-
-        if is_down(self.backward_button):
-            self.brake()
-
-        else:
-            self.nobrake()
-
-        if is_down(self.left_button):
-            self.turnleft()
-
-        if is_down(self.right_button):
-            self.turnright()
-
-        if not(is_down(self.left_button)) and not(is_down(self.right_button)):
-            self.nosteerinput = True
-
-        if self.nosteerinput:
-            self.noturn()
 
     def __init__(self):
         # Initialize the ShowBase class from which we inherit, which will
         # create a window and set up everything we need for rendering into it.
         ShowBase.__init__(self)
+
         dir_path = Path(sys.path[0])
+        self.use_kph = True
+        self.is_down = base.mouseWatcherNode.is_button_down
+
+        self.forward_button = KeyboardButton.ascii_key('w')  # 'raw-' prefix is being used to mantain WASD positioning on other keyboard layouts
+        self.left_button = KeyboardButton.ascii_key('a')
+        self.backward_button = KeyboardButton.ascii_key('s')
+        self.right_button = KeyboardButton.ascii_key('d')
+        self.reverse_button = KeyboardButton.ascii_key('r')
+
+        self.speedometer_kph = self.makeStatusLabel(0)
+        self.speedometer_mph = self.makeStatusLabel(1)
 
         # Plane
         self.worldNP = render.attachNewNode('World')
@@ -251,84 +346,14 @@ class MainWindow(ShowBase):
         self.world.setDebugNode(self.debugNP.node())
         self.world.attachRigidBody(np.node())
         self.world.setGravity(Vec3(0, 0, -9.81))
-        # Chassis body
-        # shape = BulletBoxShape(Vec3(0.7, 1.5, 0.5))
-        self.shape = BulletBoxShape(Vec3(1, 2.2, 0.55))
-        self.ts = TransformState.makePos(Point3(0, 0, 0.75))
 
-        self.chassisNP = render.attachNewNode(BulletRigidBodyNode('Car'))
-        self.chassisNP.node().addShape(self.shape, self.ts)
-        self.chassisNP.setPos(0, 0, 0)
-        self.chassisNP.node().setMass(1520.0)
-        self.chassisNP.node().setDeactivationEnabled(False)
-
-        base.cam.reparentTo(self.chassisNP)
-
-        self.world.attachRigidBody(self.chassisNP.node())
-
-        # Chassis geometry
-        loader.loadModel(self.rel_path("/src/models/cars/Supra Body ReScale rotate Nglass.bam")).reparentTo(self.chassisNP)
-
-        # Vehicle
-        self.vehicle = BulletVehicle(self.world, self.chassisNP.node())
-        self.vehicle.setCoordinateSystem(ZUp)
-        self.world.attachVehicle(self.vehicle)
-
-        self.LFwheelNP = loader.loadModel(self.rel_path("/src/models/cars/Supra Wheel L RS.bam"))
-        self.LFwheelNP.reparentTo(render)
-
-        self.RFwheelNP = loader.loadModel(self.rel_path("/src/models/cars/Supra Wheel R RS.bam"))
-        self.RFwheelNP.reparentTo(render)
-
-        self.LBwheelNP = loader.loadModel(self.rel_path("/src/models/cars/Supra Wheel L RS.bam"))
-        self.LBwheelNP.reparentTo(render)
-
-        self.RBwheelNP = loader.loadModel(self.rel_path("/src/models/cars/Supra Wheel R RS.bam"))
-        self.RBwheelNP.reparentTo(render)
-        # (0.79, -1.35, 0)
-        # Vec3(1, 2.2, 0.55)
-        self.LFwheel = self.addWheel(Point3(0.9, -1.35, 0.65), True, self.LFwheelNP)
-        self.RFwheel = self.addWheel(Point3(-0.9, -1.35, 0.65), True, self.RFwheelNP)
-        self.LBwheel = self.addWheel(Point3(0.9, 1.35, 0.65), False, self.LBwheelNP)
-        self.RBwheel = self.addWheel(Point3(-0.9, 1.35, 0.65), False, self.RBwheelNP)
-
-        # debugNode = BulletDebugNode('Debug')
-        # debugNode.showWireframe(True)
-        # debugNode.showConstraints(True)
-        # debugNode.showBoundingBoxes(False)
-        # debugNode.showNormals(False)
-        # debugNP = render.attachNewNode(debugNode)
-        # debugNP.show()
-
-        # world = BulletWorld()
-        # world.setGravity(Vec3(0, 0, -9.81))
-        # self.world.setDebugNode(debugNP.node())
+        self.test_car = BulletCar(world=self.world, keymonitor=self.is_down,
+                                  forward_button=self.forward_button, left_button=self.left_button,
+                                  right_button=self.right_button, brake_button=self.backward_button,
+                                  reverse_button=self.reverse_button)
+        # base.cam.reparentTo(self.test_car.chassisNP)  # Use this line to make the camera follow the car
 
         ## TODO: coord system - xpositive = right, ypositive = back, zpositive = up
-
-        # self.accept("w", self.accelerate)
-        # self.accept("w-repeat", self.accelerate)
-        # self.accept("w-up", self.noaccelerate)
-        #
-        # self.accept("s", self.brake)
-        # self.accept("s-repeat", self.brake)
-        # self.accept("s-up", self.nobrake)
-        #
-        # self.accept("a", self.turnleft)
-        # self.accept("a-repeat", self.turnleft)
-        # self.accept("a-up", self.nosteermethod)
-        #
-        # self.accept("d", self.turnright)
-        # self.accept("d-repeat", self.turnright)
-        # self.accept("d-up", self.nosteermethod)
-        #
-        # self.accept(".", self.doExit)
-
-        self.forward_button = KeyboardButton.ascii_key('w')  # 'raw-' prefix is being used to mantain WASD positioning on other keyboard layouts
-        self.left_button = KeyboardButton.ascii_key('a')
-        self.backward_button = KeyboardButton.ascii_key('s')
-        self.right_button = KeyboardButton.ascii_key('d')
-        self.reverse_button = KeyboardButton.ascii_key('r')
 
         map = base.win.get_keyboard_map()
 
@@ -348,7 +373,7 @@ class MainWindow(ShowBase):
 
 
         taskMgr.add(self.update, 'update')
-        taskMgr.add(self.move_task, 'inputmanager')
+        # taskMgr.add(self.move_task, 'inputmanager')
 
 
 if __name__ == '__main__':
