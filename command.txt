@@ -1,0 +1,3 @@
+python setup.py build_apps
+
+blend2bam: blend2bam "D:\P3D\NP\Road ML TT1S.blend" "D:\P3D\NPLP\Road ML TT1Sb2b.bam" --physics-engine "bullet"

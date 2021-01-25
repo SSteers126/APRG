@@ -5,6 +5,24 @@ PlayerCar = None
 
 carObjects = []
 
+<<<<<<< Updated upstream
+=======
+startLine = None
+checkpointObjects = []
+lapNum = 0
+
+AIThrottle = 0
+AITurning = 0
+AIBraking = 0
+
+AITime = 0
+
+currentGate = 0
+currentLap = 0
+
+AIResetCall = False
+
+>>>>>>> Stashed changes
 
 def rel_path(self, path="/src"):
     # Get the location of the 'py' file I'm running:
