@@ -68,11 +68,7 @@ import gen.funcs
 # os.system('xset r off')
 
 class BulletCar:
-<<<<<<< Updated upstream
-    def __init__(self, world, keymonitor,
-=======
     def __init__(self, world, traverser, keymonitor,
->>>>>>> Stashed changes
                  forward_button, left_button, right_button, brake_button, reverse_button,
                  max_steering=40.0, steer_speed=100.0, body_node_name="Car",
                  hitbox_dimensions=(1, 2.2, 0.55), hitbox_location=(0, 0, 0.75),
@@ -91,8 +87,6 @@ class BulletCar:
         self.right_button = right_button
         self.brake_button = brake_button
         self.reverse_button = reverse_button
-<<<<<<< Updated upstream
-=======
 
         # Steering info
         self.steering = 0.0  # degrees
@@ -355,50 +349,32 @@ class StartLineBox:
 
         # print(self.passed)
 
->>>>>>> Stashed changes
 
-        # Steering info
-        self.steering = 0.0  # degrees
-        self.steeringClamp = max_steering  # degrees
-        self.steeringIncrement = steer_speed  # degrees per second
-        self.nosteerinput = False
+class MainWindow(ShowBase):
 
-        self.hitbox_shape = BulletBoxShape(Vec3(hitbox_dimensions[0], hitbox_dimensions[1], hitbox_dimensions[2]))
-        self.ts = TransformState.makePos(Point3(hitbox_location[0], hitbox_location[1], hitbox_location[2]))
+    def doExit(self):
+        # os.system('xset r on')
+        sys.exit(1)
 
-        self.chassisNP = render.attachNewNode(BulletRigidBodyNode(body_node_name))
-        self.chassisNP.node().addShape(self.hitbox_shape, self.ts)
-        self.chassisNP.setPos(spawn_location[0], spawn_location[1], spawn_location[2])
-        self.chassisNP.node().setMass(mass)
-        self.chassisNP.node().setDeactivationEnabled(False)
-        world.attachRigidBody(self.chassisNP.node())
+    def rel_path(self, path="/src"):
+        # Get the location of the 'py' file I'm running:
+        dir = os.path.abspath(sys.path[0])
 
-        # Chassis geometry
-        loader.loadModel(globals.rel_path(None, path=rel_body_path)).reparentTo(
-            self.chassisNP)
+        # Convert that to panda's unix-style notation.
+        dir = Filename.fromOsSpecific(dir).getFullpath()
 
-        # Vehicle
-        self.vehicle = BulletVehicle(world, self.chassisNP.node())
-        self.vehicle.setCoordinateSystem(ZUp)
-        world.attachVehicle(self.vehicle)
+        return dir + path
 
-        self.LFwheelNP = loader.loadModel(globals.rel_path(None, rel_lwheel_path))
-        self.LFwheelNP.reparentTo(render)
-
-        self.RFwheelNP = loader.loadModel(globals.rel_path(None, rel_rwheel_path))
-        self.RFwheelNP.reparentTo(render)
-
-        self.LBwheelNP = loader.loadModel(globals.rel_path(None, rel_lwheel_path))
-        self.LBwheelNP.reparentTo(render)
-
-        self.RBwheelNP = loader.loadModel(globals.rel_path(None, rel_rwheel_path))
-        self.RBwheelNP.reparentTo(render)
-
-        self.LFwheel = self.addWheel(Point3(front_wheel_distance[0], front_wheel_distance[1], front_wheel_distance[2]), True, self.LFwheelNP)
-        self.RFwheel = self.addWheel(Point3(-(front_wheel_distance[0]), front_wheel_distance[1], front_wheel_distance[2]), True, self.RFwheelNP)
-        self.LBwheel = self.addWheel(Point3(rear_wheel_distance[0], -(rear_wheel_distance[1]), rear_wheel_distance[2]), False, self.LBwheelNP)
-        self.RBwheel = self.addWheel(Point3(-(rear_wheel_distance[0]), -(rear_wheel_distance[2]), rear_wheel_distance[2]), False, self.RBwheelNP)
-
+    # Macro-like function to reduce the amount of code needed to create the
+    # onscreen instructions
+    def makeStatusLabel(self, i):
+        return OnscreenText(
+            parent=base.a2dTopLeft, align=TextNode.ALeft,
+            style=1, fg=(1, 1, 0, 1), shadow=(0, 0, 0, .4),
+            pos=(0.06, -0.1 -(.06 * i)), scale=.05, mayChange=True)
+    
+    def convZUp(self, x, y, z):
+        return (x, -z, y)
 
     def camera_task(self, *args, **kwargs):
         # current_steer = self.steering
@@ -527,48 +503,9 @@ class StartLineBox:
         if self.keymonitor(self.reverse_button): # seems to disallow forward engine force when reverse engine force is used
             self.reverse()
 
-<<<<<<< Updated upstream
-class MainWindow(ShowBase):
-
-    def doExit(self):
-        # os.system('xset r on')
-        sys.exit(1)
-
-    def rel_path(self, path="/src"):
-        # Get the location of the 'py' file I'm running:
-        dir = os.path.abspath(sys.path[0])
-
-        # Convert that to panda's unix-style notation.
-        dir = Filename.fromOsSpecific(dir).getFullpath()
-
-        return dir + path
-
-    # Macro-like function to reduce the amount of code needed to create the
-    # onscreen instructions
-    def makeStatusLabel(self, i):
-        return OnscreenText(
-            parent=base.a2dTopLeft, align=TextNode.ALeft,
-            style=1, fg=(1, 1, 0, 1), shadow=(0, 0, 0, .4),
-            pos=(0.06, -0.1 -(.06 * i)), scale=.05, mayChange=True)
-    
-    def convZUp(self, x, y, z):
-        return (x, -z, y)
-
-    # def camera_task(self, *args, **kwargs):
-    #     current_steer = globals.carObjects[0].steering
-    #     xcoord = None
-    #     base.cam.setPos(5, -8, 2.1)
-    #     base.cam.lookAt(0, 0, 0.3)
-
-
-
-    def hud_task(self, *args, **kwargs):
-        kph_measure = globals.carObjects[0].vehicle.getCurrentSpeedKmHour()
-=======
     def hud_task(self, *args, **kwargs):
         # kph_measure = globals.carObjects[0].vehicle.getCurrentSpeedKmHour()
         kph_measure = self.test_car.vehicle.getCurrentSpeedKmHour()
->>>>>>> Stashed changes
         self.speedometer_kph.setText("Speed (kph): " + str(round(kph_measure, 1)))
         self.speedometer_mph.setText("Speed (mph): " + str(round(mph_measure := (kph_measure * 0.6213712), 1)))
 
@@ -579,13 +516,6 @@ class MainWindow(ShowBase):
         self.world.doPhysics(dt, 10, 0.008)
         # if self.nosteerinput:
         #     self.noturn()
-<<<<<<< Updated upstream
-        for i in globals.carObjects:
-            i.move_task()
-            i.reverse_task()
-        # self.camera_task()
-        self.hud_task()
-=======
         # self.move_task()
         # self.reverse_task()
         for i in globals.carObjects:
@@ -598,7 +528,6 @@ class MainWindow(ShowBase):
             # for node in i.ghost.getOverlappingNodes():
             #     print(node)
             # print(type(node))
->>>>>>> Stashed changes
         return task.cont
 
     def __init__(self):
@@ -606,15 +535,6 @@ class MainWindow(ShowBase):
         # create a window and set up everything we need for rendering into it.
         ShowBase.__init__(self)
 
-<<<<<<< Updated upstream
-        dir_path = Path(sys.path[0])
-        self.use_kph = True
-        self.is_down = base.mouseWatcherNode.is_button_down
-
-        self.forward_button = KeyboardButton.ascii_key('w')  # 'raw-' prefix is being used to mantain WASD positioning on other keyboard layouts
-        self.left_button = KeyboardButton.ascii_key('a')
-        self.backward_button = KeyboardButton.ascii_key('s')
-=======
         self.keymonitor = base.mouseWatcherNode.is_button_down
 
         # self.traverser = CollisionTraverser('collision traverser')
@@ -628,7 +548,6 @@ class MainWindow(ShowBase):
         self.forward_button = KeyboardButton.ascii_key('w')  # 'raw-' prefix is being used to mantain WASD positioning on other keyboard layouts
         self.left_button = KeyboardButton.ascii_key('a')
         self.brake_button = KeyboardButton.ascii_key('s')
->>>>>>> Stashed changes
         self.right_button = KeyboardButton.ascii_key('d')
         self.reverse_button = KeyboardButton.ascii_key('r')
 
@@ -718,22 +637,6 @@ class MainWindow(ShowBase):
         render.setLight(directionalLightNP)
         # self.trackNP.setLight(directionalLightNP)
 
-<<<<<<< Updated upstream
-        self.lowPassFilter = AlphaTestAttrib.make(TransparencyAttrib.MDual, 0.5)
-
-        self.debugNP = self.worldNP.attachNewNode(BulletDebugNode('Debug'))
-        self.debugNP.show()
-        self.world = BulletWorld()
-        self.world.setDebugNode(self.debugNP.node())
-        self.world.attachRigidBody(np.node())
-        self.world.setGravity(Vec3(0, 0, -9.81))
-
-        self.test_car = BulletCar(world=self.world, keymonitor=self.is_down,
-                                  forward_button=self.forward_button, left_button=self.left_button,
-                                  right_button=self.right_button, brake_button=self.backward_button,
-                                  reverse_button=self.reverse_button)
-        # base.cam.reparentTo(self.test_car.chassisNP)  # Use this line to make the camera follow the car
-=======
         self.baseLight = render.attachNewNode(AmbientLight("ambientLight"))
         # Set the color of the ambient light
         self.baseLight.node().setColor((.1, .1, .1, 1))
@@ -745,7 +648,6 @@ class MainWindow(ShowBase):
                                   forward_button=self.forward_button, left_button=self.left_button,
                                   right_button=self.right_button, brake_button=self.brake_button,
                                   reverse_button=self.reverse_button)
->>>>>>> Stashed changes
 
         # base.cam.reparentTo(self.test_car.chassisNP)  # Use this line to make the camera follow the car
         ## TODO: coord system - xpositive = right, ypositive = back, zpositive = up

@@ -5,8 +5,6 @@ PlayerCar = None
 
 carObjects = []
 
-<<<<<<< Updated upstream
-=======
 startLine = None
 checkpointObjects = []
 lapNum = 0
@@ -22,7 +20,6 @@ currentLap = 0
 
 AIResetCall = False
 
->>>>>>> Stashed changes
 
 def rel_path(self, path="/src"):
     # Get the location of the 'py' file I'm running:
